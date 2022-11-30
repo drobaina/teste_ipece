@@ -1,0 +1,196 @@
+---
+title: "Explorando alguns gráficos"
+description: |
+  Análise potencial de gráficos
+output:
+ html_document:
+  theme: united
+  highlight: textmate
+  toc: true
+  toc_float: true
+always_allow_html: yes
+---
+
+```{r setup, include=FALSE}
+if (!require(ggplot2)) install.packages('ggplot2')
+if (!require(ggExtra)) install.packages('ggExtra')
+if (!require(tidyverse)) install.packages('tidyverse')
+if (!require(readxl)) install.packages('readxl')
+if (!require(gridExtra)) install.packages('gridExtra')
+if (!require(plotly)) install.packages('plotly')
+if (!require(gapminder)) install.packages('gapminder')
+if (!require(quantmod)) install.packages('quantmod')
+
+data <- read_excel("/Users/professorrobaina/Documents/2022/fgv_R/ipece1/familias.xlsx") 
+
+
+knitr::opts_chunk$set(  warning = FALSE,
+                      message =FALSE,
+                      echo = FALSE)
+
+
+```
+
+
+# Gráfico de pontos
+
+
+```{r  }
+# nudge_x e nudge_y fonte dos eixos
+# check_overlap não deixar a imagem sobrepor textos
+ggplot(data, aes(x=`Número de Filhos`, y=Renda)) +
+  geom_point() + # mostrar pontos
+  geom_text(
+    label=data$Famílias, 
+    nudge_x = 0.25, nudge_y = 0.25, 
+    check_overlap = T
+  )
+```
+
+```{r }
+# criar o gráfico trocando colocando o nome da família no 
+# "ponto"
+ggplot(data, aes(x=`Número de Filhos`, y=Renda)) +
+  geom_point() + 
+  geom_label( 
+    data=data %>% filter(`Número de Filhos`>1 & Renda>=3000), 
+    aes(label=Famílias) 
+             )
+``` 
+
+
+```{r }
+# gráfico padrão
+p <- ggplot(data, aes(x=Renda, y=`Poupança`, color=`Número de Filhos`, size=`Número de Filhos`)) +
+      geom_point() +
+      theme(legend.position="none")
+```
+
+```{r , echo = T}
+# histograma
+ ggMarginal(p, type="histogram")
+```
+
+
+```{r , echo = T}
+# densidade
+ ggMarginal(p, type="density")
+```
+
+```{r , echo = T}
+# boxplot
+ggMarginal(p, type="boxplot")
+```
+
+### Muitos gráficos juntos
+
+```{r }
+# gráficos independentes
+g1 <- ggplot(data, aes(x=`Número de Filhos`)) + geom_density(fill="slateblue")
+g2 <- ggplot(data, aes(x=`Número de Filhos`, y=Renda, color=`Número de Filhos`)) + geom_point(size=1) + theme(legend.position="none")
+g3 <- ggplot(data, aes(x=`Número de Filhos`)) + geom_boxplot() + theme(legend.position="none")
+g4 <- ggplot(data , aes(x=`Poupança`)) +  geom_bar()
+
+## duas colunas e duas linhas 
+grid.arrange(g2, arrangeGrob(g3, g4, ncol=2), nrow = 2)
+
+## três linhas 
+grid.arrange(g1, g2, g3, nrow = 3)
+
+## uma linha e a distribuiçào das colunas 
+# metada da coluna e depois 1/4 da coluna
+grid.arrange(g2, arrangeGrob(g3, g4, ncol=2), nrow = 1)
+
+# metada da coluna e depois 1/2 da linha
+grid.arrange(g2, arrangeGrob(g3, g4, nrow=2), nrow = 1)
+```
+
+# Gráfico de áreas
+
+O pacote Plotly cria gráficos interativos da web a partir de gráficos `ggplot2` e/ou uma interface personalizada para a biblioteca JavaScript (MITlicensed) `plotly.js` inspirada na gramática dos gráficos.
+
+```{r }
+# criar vetores
+var1 <- seq(1,8)
+var2 <- c(0,1,4,1,8,7,5,4)
+var3 <- c(7,8,4,2,1,2,0,1)
+
+# gráfico de áreas com os dois grupos
+p <- plot_ly(x = var1, y = var2, type="scatter", mode="markers", fill = "tozeroy")
+p <- add_trace(p, x = var1, y = var3, type="scatter", mode="markers", fill = "tonexty")
+p
+```
+
+# Gráfico com controles customizáveis?
+
+Vamos analisar os casos disponíveis no pacote Plotly?
+
+[https://plotly.com/r/#controls](https://plotly.com/r/#controls)
+
+```{r }
+
+# dados
+getSymbols(Symbols = c("AAPL", "MSFT"), from = '2021-01-01', to = '2022-01-01')
+
+ds <- data.frame(Date = index(AAPL), AAPL[,6], MSFT[,6])
+
+fig <- plot_ly(ds, x = ~Date)
+fig <- fig %>% add_lines(y = ~AAPL.Adjusted, name = "Apple")
+fig <- fig %>% add_lines(y = ~MSFT.Adjusted, name = "Microsoft")
+fig <- fig %>% layout(
+    title = "Preços das Ações",
+    xaxis = list(
+      rangeselector = list(
+        buttons = list(
+          list(
+            count = 3,
+            label = "Tri",
+            step = "month",
+            stepmode = "backward"),
+          list(
+            count = 6,
+            label = "Sem",
+            step = "month",
+            stepmode = "backward"),
+          list(
+            count = 1,
+            label = "Anual",
+            step = "year",
+            stepmode = "backward"),
+          list(
+            count = 1,
+            label = "YTD",
+            step = "year",
+            stepmode = "todate"),
+          list(step = "all"))),
+
+      rangeslider = list(type = "date")),
+    yaxis = list(title = "Preço"))
+
+fig
+```
+
+Exemplo animado com o Plotly.
+
+[https://plotly-r.com/animating-views.html](https://plotly-r.com/animating-views.html)
+
+```{r }
+# ?gapminder
+p <- ggplot(gapminder, aes(gdpPercap, lifeExp, color = continent)) +
+  geom_point(aes(size = pop, frame = year, ids = country)) +
+  scale_x_log10()
+
+ggplotly(p)
+```
+
+# Missão
+
+
+Voltar ao grupo e ao projeto e analisar entre as variáveis entre as colunas 21 e 28 o que mais importa frente: gênero, formação e renda. 
+
+
+# Referências
+
+1. [https://www.r-graph-gallery.com/](https://www.r-graph-gallery.com/)
+2. [https://plotly.com/r/dropdowns/](https://plotly.com/r/dropdowns/)
+3. [https://plotly-r.com/animating-views.html](https://plotly-r.com/animating-views.html)
